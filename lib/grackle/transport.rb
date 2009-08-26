@@ -32,17 +32,20 @@ module Grackle
     #             a multipart request will be sent. If a Time is included, .httpdate will be called on it.
     # - :headers - a hash of headers to send with the request
     # - :auth - a hash of authentication parameters for either basic or oauth
-    # - :timeout - timeout for the http request in seconds
+    # - :timeout - timeout for the http request in seconds, defaults to 10
     def request(method, string_url, options={})
       params = stringify_params(options[:params])
+      timeout = options[:timeout] || 10
       if method == :get && params
         string_url << query_string(params)
       end
       url = URI.parse(string_url)
       begin
-        execute_request(method,url,options)
+        result = SystemTimer.timeout_after(timeout) do
+          execute_request(method,url,options)
+        end
       rescue Timeout::Error
-        raise "Timeout while #{method}ing #{url.to_s}"
+        raise TwitterTimeoutError.new(method, url)
       end
     end
     
@@ -51,7 +54,6 @@ module Grackle
       conn.use_ssl = (url.scheme == 'https')
       conn.start do |http| 
         req = req_class(method).new(url.request_uri)
-        http.read_timeout = options[:timeout]
         add_headers(req,options[:headers])
         if file_param?(options[:params])
           add_multipart_data(req,options[:params])

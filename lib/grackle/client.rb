@@ -16,7 +16,15 @@ module Grackle
       self.response_body = response_body
       super(msg||"#{self.method} #{self.request_uri} => #{self.status}: #{self.response_body}")
     end
-  end  
+  end
+  
+  #Raised when timed out attempting to contact Twitter; standard http timeout doesn't 
+  #begin counting until connection is made, which fails when host is completely unreachable.
+  class TwitterTimeoutError < TwitterError
+    def initialize(method, request_uri, msg = nil)
+      super(method, request_uri, nil, nil, "Timed out attempting to contact Twitter.")
+    end
+  end
   
   # The Client is the public interface to Grackle. You build Twitter API calls using method chains. See the README for details 
   # and new for information on valid options.
@@ -205,6 +213,8 @@ module Grackle
           transport.request(
             request.method,request.url,:auth=>auth,:headers=>headers,:params=>params, :timeout => timeout
           )
+        rescue TwitterTimeoutError => e
+          raise e
         rescue => e
           puts e
           raise TwitterError.new(request.method,request.url,nil,nil,"Unexpected failure making request: #{e}")

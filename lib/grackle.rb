@@ -24,6 +24,7 @@ require 'json'
 require 'oauth'
 require 'oauth/client'
 require 'mime/types'
+require 'system_timer'
 
 require 'grackle/utils'
 require 'grackle/transport'
