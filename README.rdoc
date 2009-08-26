@@ -121,6 +121,7 @@ You'll need the following gems to use all features of Grackle:
 - json
 - oauth 
 - mime-types
+- system_timer
 
 == INSTALL:
 
