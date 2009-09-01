@@ -49,6 +49,31 @@ module Grackle
       end
     end
     
+    def request_for(method, string_url, options={})
+      params = stringify_params(options[:params])
+      if method == :get && params
+        string_url << query_string(params)
+      end
+      url = URI.parse(string_url)
+      conn = Net::HTTP.new(url.host, url.port)
+      conn.use_ssl = (url.scheme == 'https')
+      req = req_class(method).new(url.request_uri)
+      add_headers(req,options[:headers])
+      if file_param?(options[:params])
+        add_multipart_data(req,options[:params])
+      else
+        add_form_data(req,options[:params])
+      end
+      if options.has_key? :auth
+        if options[:auth][:type] == :basic
+          add_basic_auth(req,options[:auth])
+        elsif options[:auth][:type] == :oauth
+          add_oauth(conn,req,options[:auth])
+        end
+      end
+      dump_request_as_hash(req)
+    end      
+    
     def execute_request(method,url,options={})
       conn = Net::HTTP.new(url.host, url.port)
       conn.use_ssl = (url.scheme == 'https')
@@ -180,6 +205,16 @@ module Grackle
             site << ":#{conn.port}"
           end
           site
+        end
+        
+        def dump_request_as_hash(req)
+          request = { :method  => req.method,
+                      :path    => req.path,
+                      :headers => {}}
+          req.each_header do |key, value|
+            request[:headers][key] = value
+          end
+          request
         end
         
         def dump_request(req)

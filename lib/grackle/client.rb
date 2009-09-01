@@ -109,6 +109,8 @@ module Grackle
     # - :auth           - Hash of authentication type and credentials. Must have :type key with value one of :basic or :oauth
     #   - :type=>:basic  - Include :username and :password keys
     #   - :type=>:oauth  - Include :consumer_key, :consumer_secret, :token and :token_secret keys
+    # - :generate_url   - Will short-circuit execution of the request and instead return a 
+    #                     hash of {:method => "", :path => "", :headers => {}}
     def initialize(options={})
       self.transport = Transport.new
       self.handlers = {:json=>Handlers::JSONHandler.new,:xml=>Handlers::XMLHandler.new,:unknown=>Handlers::StringHandler.new}
@@ -202,6 +204,7 @@ module Grackle
         id = params.delete(:id)
         request << "/#{id}" if id
         request << ".#{format}"
+        return generate_request_url(params) if params.delete(:generate_url)
         res = send_request(params)
         process_response(format,res)
       ensure
@@ -219,6 +222,12 @@ module Grackle
           puts e
           raise TwitterError.new(request.method,request.url,nil,nil,"Unexpected failure making request: #{e}")
         end        
+      end
+      
+      def generate_request_url(params)
+        transport.request_for(
+          request.method,request.url,:auth=>auth,:headers=>headers,:params=>params
+        )
       end
       
       def process_response(format,res)
